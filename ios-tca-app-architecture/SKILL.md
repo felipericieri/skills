@@ -1,6 +1,6 @@
 ---
 name: ios-tca-app-architecture
-description: Use when creating a new iOS/SwiftUI app or feature, adding modules, writing Swift code, tests, test plans, xcconfig/XcodeGen setup, or design-system (Theme, spacing, radius) code in a project that uses The Composable Architecture (TCA)
+description: Use when creating a new iOS/iPadOS/macOS SwiftUI app or feature, adding modules, writing Swift code, async/concurrency code, user-facing strings, error handling, tests, test plans, xcconfig/XcodeGen setup, or design-system (Theme, spacing, radius) code in a project that uses The Composable Architecture (TCA)
 ---
 
 # iOS App Architecture (TCA, modular, XcodeGen)
@@ -44,6 +44,8 @@ Declare them in `project.yml` (`schemes.<name>.test.testPlans`). Don't hand-writ
 | `templates/CommonTesting/ViewSnapshots.swift` | Shared `assertViewSnapshot` helper (iPhone-13 layout, rendered on the iPhone 18 Pro simulator) |
 | `templates/scripts/generate-test-plans.py` | Generates the five test plans |
 | `templates/scripts/check_layering.py`, `check-theme-usage.sh` | Enforce module layering and Theme-only design values; copy to `scripts/` |
+| `networking-persistence-connectivity.md` | Networking module, Persistence module, offline/connectivity strategy (from Imontour) |
+| `concurrency-localization-errors.md` | Concurrency, localization and error-handling rules |
 | `workflow.md` | Pre-finish checks, git and PR defaults (project `CLAUDE.md` overrides) |
 
 Replace `__App__`, `__Feature__`, `__company__` placeholders and pin the TCA and snapshot-testing versions to the current minor when scaffolding.
@@ -62,9 +64,25 @@ Other modules sit at the root of `Packages/`:
 - **Core** – lowest level, importable anywhere, holds the app's core domain. Imports nothing from the project.
 - **Common** – shared non-UI utilities (formatting, extensions, logging, storage/HTTP primitives).
 - **CommonUI** – shared UI: `Theme`, default components, asset catalog. Depends on Common at most.
-- Any other module (networking, auth, ...) also lives at the root of `Packages/`.
+- Any other module (Networking, Authentication, Connectivity, ...) also lives at the root of `Packages/`. `Persistence` is a Feature-layer module with no UI pair (logic-only modules are the one exception to the two-module rule).
 
 Dependencies point downward only: App → FeatureUI → Feature → Core/Common. No cycles.
+
+## Platforms: iOS, iPadOS and macOS
+
+Every feature works on all three unless its spec says otherwise.
+
+- `Package.swift`: `platforms: [.iOS(.v26), .macOS(.v26)]`. Feature, Core and Common import no UIKit/AppKit. Platform-specific code lives only in FeatureUI/CommonUI (`#if os(...)` only where a view genuinely differs) or in an adapter module behind a protocol.
+- Layout adapts to size class and window size (`NavigationSplitView`, `ViewThatFits`, adaptive grids); never `UIScreen` or fixed device sizes. Support pointer, keyboard and menu commands on iPad and Mac.
+- Verify with unit tests plus a macOS compile check: `xcodebuild build -destination 'generic/platform=macOS'`. Snapshot tests are iOS-only (`#if os(iOS)`); screens with an adaptive layout also get an iPad snapshot.
+
+## Concurrency, localization, errors
+
+Read `concurrency-localization-errors.md` before writing async code, user-facing text or failure paths. Headlines: no unstructured `Task {}` (use `.run` and `.task`), data is `Sendable`, shared mutable state is an actor; strings live in per-module String Catalogs and never in Feature/Core/Common; typed errors per module, mapped at the boundary and shown through a CommonUI state view.
+
+## Networking, persistence, connectivity
+
+If the app talks to an API, add a **Networking** module (Modules layer, domain-neutral transport: `HTTPTransport`, `APIClient`, closed `APIError`; typed domain calls live in the owning Feature). If it saves data on the device, add **Persistence** (Feature layer, no UI pair; `DocumentStore`/`KeyValueStore` in Common). If both and it must behave without a network, add the connectivity strategy: two signals (network path hint, request outcomes as truth), one root banner, never refuse a request on the monitor's word, reads retry and writes go through one save path. Offline editing for server data needs its own ADR first. Read `networking-persistence-connectivity.md` before building any of these.
 
 ## Folder structure
 
@@ -139,3 +157,6 @@ Assets: an asset catalog inside CommonUI with a singleton accessor (e.g. `Common
 | "Hardcode 10pt just here" | Add/choose a theme token. |
 | "Small feature, one module is fine" | Always `Feature` + `FeatureUI`. |
 | "Put the config in build settings" | xcconfig in `Config/`. |
+| "We're in a hurry / the user said hardcode it" | Use the nearest theme token, or add the missing token to CommonUI and tell the user. Hurry never waives the rules. |
+| "I'll run the snapshot tests once to confirm they pass" | Reference images don't exist until recorded; recording is the only run allowed, on iPhone 18 Pro. |
+| "The project's CLAUDE.md differs from this skill" | The project wins for folder names, git and merge rules; testing rules and theme rules still apply. |

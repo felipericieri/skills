@@ -4,6 +4,7 @@ options:
   bundleIdPrefix: com.__company__
   deploymentTarget:
     iOS: "26.0"
+    macOS: "26.0"
   createIntermediateGroups: true
   developmentLanguage: en
 
@@ -45,7 +46,8 @@ packages:
 targets:
   __App__:
     type: application
-    platform: iOS
+    platform: auto                  # with supportedDestinations (verify on first xcodegen run)
+    supportedDestinations: [iOS, macOS]   # iPadOS comes with iOS (TARGETED_DEVICE_FAMILY = 1,2)
     sources:
       - path: __App__
       - path: CLAUDE.md              # visible in Xcode, not compiled

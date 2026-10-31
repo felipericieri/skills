@@ -4,7 +4,7 @@ import PackageDescription
 
 let package = Package(
     name: "__Feature__UI",
-    platforms: [.iOS(.v26)],
+    platforms: [.iOS(.v26), .macOS(.v26)],
     products: [
         .library(name: "__Feature__UI", targets: ["__Feature__UI"]),
     ],
