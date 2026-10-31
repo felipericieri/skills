@@ -7,7 +7,7 @@ These are defaults. If the project's `CLAUDE.md` says otherwise (branching, who 
 1. `python3 -I scripts/check_layering.py` and `bash scripts/check-theme-usage.sh` pass (copy both from `templates/scripts/`).
 2. Unit tests for the touched packages pass (`swift test` inside the package, or the Unit Suite plan). Run only what the change covers.
 3. State which tests are affected and updated: unit (reducers, clients, pure logic), snapshot (any view or CommonUI component change), acceptance (any changed flow, identifier or copy). "Checked, nothing needs updating" is a valid answer; skipping the check is not.
-4. The app target still compiles for macOS (`xcodebuild build -destination 'generic/platform=macOS' CODE_SIGNING_ALLOWED=NO`) when the change touches shared code.
+4. The app still builds for every platform (iOS Simulator on iPhone 18 Pro; `xcodebuild build -destination 'generic/platform=macOS' CODE_SIGNING_ALLOWED=NO`) and all test targets, snapshot and UI included, still compile (`xcodebuild build-for-testing`, which builds without running). Nothing may leave the tree red.
 5. Snapshot and acceptance tests are written and updated but not run. Say so in the summary, so the user knows to run them.
 6. README.md, CLAUDE.md and `project.yml` reflect the change if setup, commands, layout, environments or status changed.
 

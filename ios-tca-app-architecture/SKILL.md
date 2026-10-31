@@ -11,6 +11,24 @@ Every iOS project follows one shape: TCA features split into `Feature` + `Featur
 
 **Violating the letter of these rules is violating the spirit.**
 
+## Always green: no change breaks the app
+
+At the end of every iteration (every task, commit and PR) all of these hold:
+
+- The app **builds and launches** for each supported platform (iOS Simulator on iPhone 18 Pro, macOS), and the person can still use what worked before.
+- **Everything compiles, tests included:** snapshot and acceptance targets must build even though they are not run. Use `xcodebuild build-for-testing` (or the test plan's build step) so a change that breaks a snapshot or UI test target is caught without running it.
+- **Unit tests pass** for every package the change touches, and for any package that depends on one it touched.
+- The layering and theme scripts pass.
+
+How to keep iterations small enough to stay green:
+
+- Slice work vertically so each step is shippable: a new feature is wired into the app in the same change that introduces it, or hidden behind a flag/unreachable entry point, never half-connected.
+- Change a protocol, model or API in compatible steps: add the new, migrate callers, remove the old. Don't leave callers broken "until the next task".
+- Never comment out, skip or delete a failing test to get green. Fix the code, or fix the test with an explanation.
+- Persisted data and API contracts stay readable: a new schema version ships with its migration and fixture test in the same change.
+- If a change has no visible effect yet, say so and name the first step that will show on screen. The app still launches.
+- If you can't make it green, stop and report what is red and why. Don't hand over a broken tree.
+
 ## Testing rules (read first)
 
 - Unit tests: **Swift Testing**. Snapshot tests: **Point-Free `swift-snapshot-testing`**. Journeys: **XCUITest acceptance tests**, when the app has user journeys.
@@ -78,7 +96,7 @@ Every feature works on all three unless its spec says otherwise.
 
 ## Concurrency, localization, errors
 
-Read `concurrency-localization-errors.md` before writing async code, user-facing text or failure paths. Headlines: no unstructured `Task {}` (use `.run` and `.task`), data is `Sendable`, shared mutable state is an actor; strings live in per-module String Catalogs and never in Feature/Core/Common; typed errors per module, mapped at the boundary and shown through a CommonUI state view.
+Read `concurrency-localization-errors.md` before writing async code, user-facing text or failure paths. Headlines: no unstructured `Task {}` (use `.run` and `.task`), data is `Sendable`, shared mutable state is an actor; strings live in one `<Module>Strings` enum per module (`LocalizedStringResource` constants, String Catalog beside it) and never in Feature/Core/Common; typed errors per module, mapped at the boundary and shown through a CommonUI state view.
 
 ## Networking, persistence, connectivity
 
@@ -157,6 +175,8 @@ Assets: an asset catalog inside CommonUI with a singleton accessor (e.g. `Common
 | "Hardcode 10pt just here" | Add/choose a theme token. |
 | "Small feature, one module is fine" | Always `Feature` + `FeatureUI`. |
 | "Put the config in build settings" | xcconfig in `Config/`. |
+| "It will compile again after the next task" | Every iteration builds, launches and passes its unit tests. Slice smaller or keep old and new side by side. |
+| "I'll skip/comment out the failing test for now" | Never. Fix it, or stop and report. |
 | "We're in a hurry / the user said hardcode it" | Use the nearest theme token, or add the missing token to CommonUI and tell the user. Hurry never waives the rules. |
 | "I'll run the snapshot tests once to confirm they pass" | Reference images don't exist until recorded; recording is the only run allowed, on iPhone 18 Pro. |
 | "The project's CLAUDE.md differs from this skill" | The project wins for folder names, git and merge rules; testing rules and theme rules still apply. |

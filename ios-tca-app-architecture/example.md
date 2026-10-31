@@ -153,6 +153,18 @@ private struct StubProfileLoader: ProfileLoading {
 private struct StubError: Error {}
 ```
 
+## ProfileUI/ProfileStrings.swift
+
+```swift
+import Foundation
+
+enum ProfileStrings {
+    static let retry = LocalizedStringResource("profile.retry", bundle: bundle)
+
+    private static let bundle = LocalizedStringResource.BundleDescription.atURL(Bundle.module.bundleURL)
+}
+```
+
 ## ProfileUI/ProfileView.swift
 
 ```swift
@@ -195,7 +207,7 @@ public struct ProfileView: View {
     }
 
     private var failedView: some View {
-        Button("Try again") { store.send(.retryTapped) }
+        Button { store.send(.retryTapped) } label: { Text(ProfileStrings.retry) }
             .accessibilityIdentifier("profile.retry")
     }
 }

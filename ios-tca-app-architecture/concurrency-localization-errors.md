@@ -20,8 +20,29 @@ Goal: structured concurrency only. No stray `Task {}`.
 
 ## Localization
 
-- **String Catalogs** (`Localizable.xcstrings`), one per module that shows text: each FeatureUI owns its strings, CommonUI owns shared ones. Reference them with `bundle: .module` (`Text("profile.retry", bundle: .module)`, `String(localized: "profile.retry", bundle: .module)`).
+- **String Catalogs** (`Localizable.xcstrings`), one per module that shows text: each FeatureUI owns its strings, CommonUI owns shared ones. Reach them only through the module's Strings enum (below).
 - Keys are semantic and namespaced (`feature.screen.element`), never the English sentence. English (`en`) is the development language and the source of truth for comments to translators.
+- **Strings live in one place per module: a `<Module>Strings` enum in `<Module>Strings.swift`** (`CalendarStrings`, `CommonStrings`; drop the `Feature`/`UI` suffix). Call sites never contain a key literal.
+  - Constants are `static let` of `LocalizedStringResource`, not `String`: a `String` is resolved once and ignores the SwiftUI locale, so locale/RTL snapshots would show the wrong language. Strings with arguments are `static func` returning `LocalizedStringResource` (the argument is part of the sentence, so plurals and word order stay in the catalog).
+  - Group related strings in nested enums (`CalendarStrings.Summary.title`). Each module has one internal `bundle` helper (`.atURL(Bundle.module.bundleURL)`) used by every entry.
+  - Views use them directly (`Text(CalendarStrings.title)`, `.accessibilityLabel(CalendarStrings.Day.label(dayNumber))`). Where a plain `String` is unavoidable, convert at the edge with `String(localized: resource)`.
+  - The String Catalog sits beside the enum; keys are written once, in the enum. FeatureUI owns its strings; strings shared by more than one feature are in `CommonStrings` (CommonUI).
+  - A unit test per Strings enum checks the English catalog has a non-empty value for every entry.
+
+  ```swift
+  enum CalendarStrings {
+      static let title = LocalizedStringResource("calendar.title", bundle: bundle)
+
+      enum Summary {
+          static let empty = LocalizedStringResource("calendar.summary.empty", bundle: bundle)
+          static func days(_ count: Int) -> LocalizedStringResource {
+              LocalizedStringResource("calendar.summary.days \(count)", bundle: bundle)
+          }
+      }
+
+      private static let bundle = LocalizedStringResource.BundleDescription.atURL(Bundle.module.bundleURL)
+  }
+  ```
 - **No user-facing strings in Feature, Core or Common.** They return typed values (errors, enums); the FeatureUI maps them to text. Exception: a `LocalizedStringResource` carried in a model when the text is data.
 - Never concatenate or interpolate pieces of sentences. One key per sentence, with arguments (`%@`, `%lld`). Plurals and gender via catalog variations, not `if count == 1`.
 - Dates, numbers, currency, durations, lists: `FormatStyle` / formatters from Common, using the environment locale. No hand-built `DateFormatter` strings in views.
