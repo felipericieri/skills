@@ -1,0 +1,14 @@
+// Shared.xcconfig
+// Settings common to every environment. Included by Dev, Staging and Production.
+// Do not set these in project.yml: target settings override xcconfig values.
+
+MARKETING_VERSION = 0.1.0
+CURRENT_PROJECT_VERSION = 1
+
+PRODUCT_NAME = __App__
+INFOPLIST_KEY_CFBundleDisplayName = $(APP_DISPLAY_NAME)
+CODE_SIGN_STYLE = Automatic
+
+// Personal values (DEVELOPMENT_TEAM, API keys) go in the gitignored Local.xcconfig.
+// In an xcconfig `//` starts a comment: write URLs as https:/$()/host.
+#include? "Local.xcconfig"

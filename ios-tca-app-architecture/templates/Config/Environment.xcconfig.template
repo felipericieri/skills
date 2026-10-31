@@ -1,0 +1,11 @@
+// Copy to Dev.xcconfig / Staging.xcconfig / Production.xcconfig and change the values.
+// If an environment needs several files (e.g. a GoogleService-Info.plist), put them in Config/<Env>/.
+
+#include "Shared.xcconfig"
+
+ENVIRONMENT_NAME = Dev                         // Dev | Staging | Production
+APP_DISPLAY_NAME = __App__ (Dev)               // Production: just __App__
+PRODUCT_BUNDLE_IDENTIFIER = com.__company__.__app__.dev
+
+// Available in Swift as `#if ENV_DEV` (ENV_STAGING, ENV_PRODUCTION).
+SWIFT_ACTIVE_COMPILATION_CONDITIONS = $(inherited) ENV_DEV

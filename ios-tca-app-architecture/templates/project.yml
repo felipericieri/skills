@@ -1,0 +1,88 @@
+# Template. Replace __App__ / __Feature__ placeholders. Edit this file, never the .xcodeproj.
+name: __App__
+options:
+  bundleIdPrefix: com.__company__
+  deploymentTarget:
+    iOS: "26.0"
+  createIntermediateGroups: true
+  developmentLanguage: en
+
+configFiles:                       # settings come from xcconfig, not from target settings
+  Debug-Dev: Config/Dev.xcconfig
+  Release-Dev: Config/Dev.xcconfig
+  Debug-Staging: Config/Staging.xcconfig
+  Release-Staging: Config/Staging.xcconfig
+  Debug-Production: Config/Production.xcconfig
+  Release-Production: Config/Production.xcconfig
+
+configs:
+  Debug-Dev: debug
+  Release-Dev: release
+  Debug-Staging: debug
+  Release-Staging: release
+  Debug-Production: debug
+  Release-Production: release
+
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+
+packages:
+  ComposableArchitecture:
+    url: https://github.com/pointfreeco/swift-composable-architecture
+    upToNextMinorVersion: 1.17.0     # pin the current minor when scaffolding
+  SnapshotTesting:
+    url: https://github.com/pointfreeco/swift-snapshot-testing
+    upToNextMinorVersion: 1.18.0     # pin the current minor when scaffolding
+  Core: { path: Packages/Core }
+  Common: { path: Packages/Common }
+  CommonUI: { path: Packages/CommonUI }
+  CommonTesting: { path: Packages/CommonTesting }
+  # One entry per feature pair:
+  # Profile: { path: Packages/Features/Profile }
+  # ProfileUI: { path: Packages/Features/ProfileUI }
+
+targets:
+  __App__:
+    type: application
+    platform: iOS
+    sources:
+      - path: __App__
+      - path: CLAUDE.md              # visible in Xcode, not compiled
+        buildPhase: none
+      - path: README.md
+        buildPhase: none
+      - path: project.yml
+        buildPhase: none
+    info:
+      path: __App__/Supporting Files/Info.plist
+    entitlements:
+      path: __App__/Supporting Files/__App__.entitlements
+    dependencies:
+      - package: Core
+      - package: Common
+      - package: CommonUI
+      # - package: Profile
+      # - package: ProfileUI
+
+  __App__UITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources: [UITests]
+    dependencies:
+      - target: __App__
+
+schemes:
+  __App__ Dev:
+    build: { targets: { __App__: all } }
+    run: { config: Debug-Dev }
+    test:
+      config: Debug-Dev
+      testPlans:
+        - { path: Config/TestPlans/FullSuite.xctestplan, defaultPlan: true }
+        - path: Config/TestPlans/UnitSuite.xctestplan
+        - path: Config/TestPlans/SnapshotSuite.xctestplan
+        - path: Config/TestPlans/AcceptanceSuite.xctestplan
+        - path: Config/TestPlans/ReleaseSuite.xctestplan
+    archive: { config: Release-Dev }
+  # Duplicate for Staging and Production with their configs.
