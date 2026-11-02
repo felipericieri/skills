@@ -16,6 +16,7 @@ A skill is a folder with a `SKILL.md` file (and sometimes a few extras like temp
 | 🎓 [`learning-coach`](learning-coach) | Helps Claude *teach* instead of just answer. It explains why something exists by imagining a world without it, and checks your mental model by building on what you already got right. |
 | 🧭 [`where-are-we`](where-are-we) | A bird's-eye view of any project to pick up where the last chat left off: what's done, in flight, planned and blocked, plus a few suggested next steps. Read-only, and it needs `python3`. |
 | 🔒 [`task-claim`](task-claim) | A machine-local lock so two chats, subagents or worktrees never grab the same task. Needs only bash and git. |
+| 🚀 [`kick-off-three`](kick-off-three) | Builds on `where-are-we` and `task-claim`: picks up to three ready tasks that don't depend on or overlap each other, claims them, and starts each in its own worktree session. Asks once before launching. |
 
 ### 🏗️ A closer look at `ios-tca-app-architecture`
 
@@ -55,9 +56,11 @@ skills/
 ├── where-are-we/
 │   ├── SKILL.md
 │   └── status.py
-└── task-claim/
-    ├── SKILL.md
-    └── scripts/
+├── task-claim/
+│   ├── SKILL.md
+│   └── scripts/
+└── kick-off-three/
+    └── SKILL.md
 ```
 
 ## 🌱 Adding your own
