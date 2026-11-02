@@ -165,6 +165,7 @@ Assets: an asset catalog inside CommonUI with a singleton accessor (e.g. `Common
 3. Views using Theme tokens only; previews per state; VoiceOver + Dynamic Type checked.
 4. Snapshot tests written (recorded only on iPhone 18 Pro, only when recording); acceptance test for any new journey.
 5. Verified with unit tests only, plus the layering and theme scripts. Snapshot/acceptance left for the manual run. See `workflow.md`.
+6. Anything that only matters at release (third-party SDK or service, key or secret, bundle/team/app ID, domain or URL, entitlement, store or privacy requirement, placeholder value) is recorded in `docs/release-checklist.md` with the `release-checklist` skill, in the same change.
 
 ## Red flags
 
@@ -179,4 +180,5 @@ Assets: an asset catalog inside CommonUI with a singleton accessor (e.g. `Common
 | "I'll skip/comment out the failing test for now" | Never. Fix it, or stop and report. |
 | "We're in a hurry / the user said hardcode it" | Use the nearest theme token, or add the missing token to CommonUI and tell the user. Hurry never waives the rules. |
 | "I'll run the snapshot tests once to confirm they pass" | Reference images don't exist until recorded; recording is the only run allowed, on iPhone 18 Pro. |
+| "It's just a placeholder DSN/ID/URL, I'll remember it at release" | You won't. Add it to the release checklist now (`release-checklist` skill). |
 | "The project's CLAUDE.md differs from this skill" | The project wins for folder names, git and merge rules; testing rules and theme rules still apply. |

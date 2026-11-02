@@ -10,6 +10,7 @@ These are defaults. If the project's `CLAUDE.md` says otherwise (branching, who 
 4. The app still builds for every platform (iOS Simulator on iPhone 18 Pro; `xcodebuild build -destination 'generic/platform=macOS' CODE_SIGNING_ALLOWED=NO`) and all test targets, snapshot and UI included, still compile (`xcodebuild build-for-testing`, which builds without running). Nothing may leave the tree red.
 5. Snapshot and acceptance tests are written and updated but not run. Say so in the summary, so the user knows to run them.
 6. README.md, CLAUDE.md and `project.yml` reflect the change if setup, commands, layout, environments or status changed.
+7. Release-only items the change introduced (third parties, secrets, IDs, domains, entitlements, placeholders) are in `docs/release-checklist.md` via the `release-checklist` skill, and the summary says what was added. No secret values go in the file.
 
 ## Git
 
