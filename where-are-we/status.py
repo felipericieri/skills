@@ -86,14 +86,19 @@ MAP_LIMIT = 40
 
 
 def dependency_map(tag, tasks):
-    """Lines showing open tasks in waves: wave 0 can start now, wave N needs wave N-1 to land.
+    """Lines drawing the open tasks as a dependency graph, left to right: a task sits to the right of what it waits on.
 
-    Dependencies on subtasks (e.g. 4.2) count as the parent task; unknown ids are ignored.
+    Edges already implied by a longer path are dropped. A task that waits on several others is drawn under the latest
+    one (marked `◄ other, ...`); each of the others ends in a `► N` stub that points at it. Dependencies on subtasks
+    (e.g. 4.2) count as the parent task; unknown ids are ignored.
     """
     by_id = {str(t["id"]): t for t in tasks}
     open_ids = [i for i, t in by_id.items() if t.get("status") not in FINISHED]
     if not open_ids:
         return []
+
+    def num(i):
+        return (0, int(i), "") if i.isdigit() else (1, 0, i)
 
     def blockers(i):
         found = []
@@ -116,39 +121,93 @@ def dependency_map(tag, tasks):
 
     for i in open_ids:
         level(i)
-    unlocks = {i: [] for i in open_ids}
+
+    ancestors = {}
+
+    def anc(i, stack=()):
+        if i in ancestors:
+            return ancestors[i]
+        found = set()
+        if i not in stack:
+            for b in blockers(i):
+                found |= {b} | anc(b, stack + (i,))
+        ancestors[i] = found
+        return found
+
+    # keep only the edges no other blocker already implies
+    direct = {i: [b for b in blockers(i) if not any(b in anc(c) for c in blockers(i) if c != b)] for i in open_ids}
+    primary = {i: max(direct[i], key=lambda b: (wave[b], num(b)[1])) if direct[i] else None for i in open_ids}
+    kids = {i: [] for i in open_ids}
+    stubs = {i: [] for i in open_ids}
     for i in open_ids:
-        for b in blockers(i):
-            unlocks[b].append(i)
+        for b in direct[i]:
+            (kids if b == primary[i] else stubs)[b].append(i)
 
-    def label(i):
-        t = by_id[i]
-        status = {"in-progress": "IN PROGRESS", "deferred": "DEFERRED"}.get(t.get("status"), "READY" if not blockers(i) else "")
-        return f"{i} {str(t.get('title', ''))[:60]}" + (f" [{status}]" if status else "")
+    def name(i):
+        status = by_id[i].get("status")
+        mark = " (deferred)" if status == "deferred" else " (doing)" if status == "in-progress" else ""
+        extra = [b for b in direct[i] if b != primary[i]]
+        return i + mark + (" ◄ " + ", ".join(sorted(extra, key=num)) if extra else "")
 
+    drawn = set()
+
+    def draw(i):
+        drawn.add(i)
+        items = [draw(k) for k in sorted(kids[i], key=lambda k: (wave[k], num(k))) if k not in drawn]
+        items += [["► " + s] for s in sorted(stubs[i], key=num)]
+        label = name(i)
+        if not items:
+            return [label]
+        if len(items) == 1:
+            first, *rest = items[0]
+            return [f"{label} ── {first}"] + [" " * (len(label) + 4) + r for r in rest]
+        head = " " * (len(label) + 3)
+        out = []
+        for n, sub in enumerate(items):
+            last = n == len(items) - 1
+            lead = (label + " ──┬── ") if n == 0 else (head + ("└── " if last else "├── "))
+            pad = head + ("    " if last else "│   ")
+            out.append(lead + sub[0])
+            out += [pad + r for r in sub[1:]]
+        return out
+
+    roots = sorted((i for i in open_ids if not direct[i]), key=lambda i: (-len(kids[i]) - len(stubs[i]), num(i)))
+    alone = [i for i in roots if not kids[i] and not stubs[i]]
     lines = [f"- {tag}: {len(open_ids)} open task(s)"]
-    shown = 0
-    for n in range(max(wave[i] for i in open_ids) + 1):
-        members = sorted((i for i in open_ids if wave[i] == n), key=lambda i: (-len(unlocks[i]), i))
-        if not members:
-            continue
-        lines.append(f"  Wave {n}: " + ("can start now (deferred tasks excepted)" if n == 0 else f"unlocked once wave {n - 1} lands"))
-        for i in members:
-            if shown >= MAP_LIMIT:
-                break
-            shown += 1
-            parts = [label(i)]
-            if blockers(i):
-                after = [f"{b} (deferred)" if by_id[b].get("status") == "deferred" else b for b in blockers(i)]
-                parts.append("after " + ", ".join(after))
-            if unlocks[i]:
-                parts.append("unlocks " + ", ".join(sorted(unlocks[i])))
-            lines.append("    - " + "  |  ".join(parts))
-    if shown >= MAP_LIMIT and len(open_ids) > MAP_LIMIT:
-        lines.append(f"  (first {MAP_LIMIT} of {len(open_ids)} shown)")
+    fence = len(lines)
+    lines.append("```")
+    for r in roots:
+        if r not in alone:
+            lines += draw(r)
+            lines.append("")
+    for i in sorted((i for i in open_ids if i not in drawn and i not in alone), key=num):  # cycles
+        lines += draw(i)
+        lines.append("")
+    if lines[-1] == "":
+        lines.pop()
+    lines.append("```")
+    if lines[-2] == "```" and len(lines) == fence + 2:
+        del lines[fence:]
+    if alone:
+        lines.append("  No dependencies either way: " + ", ".join(name(i) for i in sorted(alone, key=num)))
+    lines.append("  Titles: " + "; ".join(f"{i} {str(by_id[i].get('title', ''))[:45]}" for i in sorted(open_ids, key=num)))
+    top = sorted(open_ids, key=lambda i: (-len(ancestors_rev(i, direct, open_ids)), num(i)))[:3]
+    lines.append("  Unlock the most (directly or later): " + ", ".join(f"{i} ({len(ancestors_rev(i, direct, open_ids))})" for i in top))
     if cyclic:
         lines.append(f"  WARNING: dependency cycle involving {', '.join(sorted(cyclic))}")
     return lines
+
+
+def ancestors_rev(i, direct, open_ids):
+    """Every open task that waits on i, directly or through others."""
+    seen, todo = set(), [i]
+    while todo:
+        cur = todo.pop()
+        for j in open_ids:
+            if cur in direct[j] and j not in seen:
+                seen.add(j)
+                todo.append(j)
+    return seen
 
 
 def taskmaster_section():
@@ -191,7 +250,7 @@ def taskmaster_section():
     for r in ready:
         print(f"- {r}")
     if maps:
-        print("\n### Dependency map (open tasks by wave; 'after' = unfinished prerequisites, 'unlocks' = tasks waiting on it)")
+        print("\n### Dependency map (open tasks drawn left to right: a task sits right of what it waits on; '◄ N' = also waits on N, '► N' = N is drawn elsewhere and waits on this)")
         for line in maps:
             print(line)
     if deferred:
