@@ -35,8 +35,9 @@ Keep it to one screen, in this shape:
 **Done**: finished areas, one line.
 **In flight**: in-progress tasks, open PRs, unmerged branches, uncommitted changes, stashes.
 **Planned**: remaining areas as `done/total` with a few words on what each is and whether it is blocked (and by what).
+**Dependency map**: the open tasks you can pick up, laid out so the user sees what depends on what. Build it from the script's "Dependency map" section (Task Master only; other trackers rarely record dependencies, so skip it there rather than guess). Show waves: wave 0 can start now, wave 1 unlocks when wave 0 lands, and so on. For each task, name what it waits on (`after`) and what it unlocks. Call out the tasks that unlock the most (the ones worth doing first), tasks that wait on something deferred or undecided, and any dependency cycle the script warns about. Keep it compact: for a long map show wave 0 and wave 1 in full and summarise the rest in a line. Draw it as a small tree or arrows when that is clearer than a list, for example `2 Auth ──► 4 Settings ──► 6 Notification settings`.
 **Unreleased**: what is merged since the last tag, and any release checklist items still open.
-**Next, my suggestion**: two or three options, best first. For each: the task or issue, why now (what it unblocks), what it touches, roughly how big. Say which one you would pick and why. End by asking which to take.
+**Next, my suggestion**: two or three options, best first. For each: the task or issue, why now (what it unblocks, read from the dependency map), what it touches, roughly how big. Say which one you would pick and why. End by asking which to take.
 
 If the user picks one, start it the way the project's working agreement says (usually a new branch from the integration branch, and the task marked in progress).
 

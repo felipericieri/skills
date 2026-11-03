@@ -81,6 +81,76 @@ def github_section():
             print(f"  - {line}")
 
 
+FINISHED = {"done", "cancelled"}
+MAP_LIMIT = 40
+
+
+def dependency_map(tag, tasks):
+    """Lines showing open tasks in waves: wave 0 can start now, wave N needs wave N-1 to land.
+
+    Dependencies on subtasks (e.g. 4.2) count as the parent task; unknown ids are ignored.
+    """
+    by_id = {str(t["id"]): t for t in tasks}
+    open_ids = [i for i, t in by_id.items() if t.get("status") not in FINISHED]
+    if not open_ids:
+        return []
+
+    def blockers(i):
+        found = []
+        for d in by_id[i].get("dependencies", []):
+            base = str(d).split(".")[0]
+            if base in by_id and base != i and by_id[base].get("status") not in FINISHED and base not in found:
+                found.append(base)
+        return found
+
+    wave, cyclic = {}, set()
+
+    def level(i, stack=()):
+        if i in wave:
+            return wave[i]
+        if i in stack:
+            cyclic.add(i)
+            return 0
+        wave[i] = 0 if not blockers(i) else 1 + max(level(b, stack + (i,)) for b in blockers(i))
+        return wave[i]
+
+    for i in open_ids:
+        level(i)
+    unlocks = {i: [] for i in open_ids}
+    for i in open_ids:
+        for b in blockers(i):
+            unlocks[b].append(i)
+
+    def label(i):
+        t = by_id[i]
+        status = {"in-progress": "IN PROGRESS", "deferred": "DEFERRED"}.get(t.get("status"), "READY" if not blockers(i) else "")
+        return f"{i} {str(t.get('title', ''))[:60]}" + (f" [{status}]" if status else "")
+
+    lines = [f"- {tag}: {len(open_ids)} open task(s)"]
+    shown = 0
+    for n in range(max(wave[i] for i in open_ids) + 1):
+        members = sorted((i for i in open_ids if wave[i] == n), key=lambda i: (-len(unlocks[i]), i))
+        if not members:
+            continue
+        lines.append(f"  Wave {n}: " + ("can start now (deferred tasks excepted)" if n == 0 else f"unlocked once wave {n - 1} lands"))
+        for i in members:
+            if shown >= MAP_LIMIT:
+                break
+            shown += 1
+            parts = [label(i)]
+            if blockers(i):
+                after = [f"{b} (deferred)" if by_id[b].get("status") == "deferred" else b for b in blockers(i)]
+                parts.append("after " + ", ".join(after))
+            if unlocks[i]:
+                parts.append("unlocks " + ", ".join(sorted(unlocks[i])))
+            lines.append("    - " + "  |  ".join(parts))
+    if shown >= MAP_LIMIT and len(open_ids) > MAP_LIMIT:
+        lines.append(f"  (first {MAP_LIMIT} of {len(open_ids)} shown)")
+    if cyclic:
+        lines.append(f"  WARNING: dependency cycle involving {', '.join(sorted(cyclic))}")
+    return lines
+
+
 def taskmaster_section():
     path = ROOT / ".taskmaster/tasks/tasks.json"
     if not path.exists():
@@ -93,7 +163,7 @@ def taskmaster_section():
     if "tasks" in data:  # untagged format
         data = {"(no tag)": data}
     print("\n## Task Master (tag: done/total, other statuses). Tags the project docs call stale should be ignored.")
-    ready, deferred = [], []
+    ready, deferred, maps = [], [], []
     for tag, body in data.items():
         if not isinstance(body, dict) or "tasks" not in body:
             continue
@@ -105,6 +175,7 @@ def taskmaster_section():
         others = ", ".join(f"{s} {n}" for s, n in sorted(counts.items()) if s != "done")
         complete = done + counts.get("cancelled", 0) == len(tasks)
         print(f"- {tag}: {done}/{len(tasks)}{' COMPLETE' if complete else ''}{f' ({others})' if others else ''}")
+        maps.extend(dependency_map(tag, tasks))
         finished = {t["id"] for t in tasks if t.get("status") in {"done", "cancelled"}}
         taken = 0
         for t in tasks:
@@ -119,6 +190,10 @@ def taskmaster_section():
     print("\n### In progress, and ready to start (dependencies met; first 3 per tag)")
     for r in ready:
         print(f"- {r}")
+    if maps:
+        print("\n### Dependency map (open tasks by wave; 'after' = unfinished prerequisites, 'unlocks' = tasks waiting on it)")
+        for line in maps:
+            print(line)
     if deferred:
         print(f"\n### Deferred ({len(deferred)})")
         for d in deferred:
